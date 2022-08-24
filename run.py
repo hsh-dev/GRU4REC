@@ -3,20 +3,20 @@ from TrainModule.TrainManager import TrainManager
 
 import tensorflow as tf
 
-from Model.GRU_Layer import GRU_Layer
+from Models.GRU_Block import GRU_Block
+from Models.GRU_Layer import GRU_Layer
 
+from DataModule.DataLoader import DataLoader
 
 
 if __name__ == "__main__":
     
-    gru = GRU_Layer(8)
+    # gru = GRU_Layer(8, 3)
+    # input = tf.random.normal([1, 8, 3], 0, 1, tf.float32)
+    # print("model test")
+    # output = gru(input)
+    # print(output)
     
-    input = tf.zeros([1, 8], tf.float32)
-
-    print("model test")
-    
-    output = gru(input)
-    
-    print(output)
-    
+    dataloader = DataLoader()
+    dataloader.get_session()
     
