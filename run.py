@@ -18,5 +18,6 @@ if __name__ == "__main__":
     # print(output)
     
     dataloader = DataLoader()
-    dataloader.get_session()
+    dataloader.make_session()
+    # movie = dataloader.get_movie(10)
     
