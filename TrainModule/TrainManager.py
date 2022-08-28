@@ -13,7 +13,7 @@ class TrainManager():
         self.batch_size = config["batch_size"]
     
         self.optimizer = tf.keras.optimizers.Adam(
-            learning_rate = 0.001
+            learning_rate = self.config["learning_rate"]
         )
     
     
@@ -29,6 +29,8 @@ class TrainManager():
         dataset = self.dataloader.get_train_set()
         self.movie_dim = self.dataloader.get_movie_length()  
         
+        self.model.trainable = True
+
         total_step = len(dataset)
         
         all_loss_list = []

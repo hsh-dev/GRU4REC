@@ -22,7 +22,7 @@ class RNN(Model):
         self.gru_layer_3 = GRU_Layer(n_dim, m_seq)
         self.gru_layer_4 = GRU_Layer(n_dim, m_seq)
         
-        self.dropout = Dropout(0.5)
+        self.dropout = Dropout(0.3)
         self.fc_layer = Dense(self.out_dim)
         
         self.softmax = Softmax()
