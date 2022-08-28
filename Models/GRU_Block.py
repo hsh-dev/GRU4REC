@@ -26,7 +26,9 @@ class GRU_Block(Model):
         r = sigmoid(self.r_W(x) + self.r_U(h))
         z = sigmoid(self.z_W(x) + self.z_U(h))
         h_tild = tanh(self.h_tild_W(x) + self.h_tild_U(r*h))
-        h_new = subtract(1, z) * h + z * h_tild
+        
+        ones_vector = tf.ones_like(z)
+        h_new = subtract(ones_vector, z) * h + z * h_tild
         
         return h_new
         

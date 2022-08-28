@@ -2,17 +2,16 @@ import pandas as pd
 import numpy as np
 import tensorflow as tf
 
-
-NUMPY_SEED = 10
-split_ratio = 0.8
-SESSION_LENGTH = 5    ## max 19
-BATCH_SIZE = 16
-
 class DataLoader():
-    def __init__(self) -> None:
-        self.movies_path = "ml-1m/movies.dat"
-        self.ratings_path = "ml-1m/ratings.dat"
-        self.users_path = "ml-1m/users.dat"
+    def __init__(self, config) -> None:
+        self.config = config
+        
+        self.batch_size = config["batch_size"]
+        self.split_ratio = config["split_ratio"]
+        
+        self.movies_path = config["movies_path"]
+        self.ratings_path = config["ratings_path"]
+        self.users_path = config["users_path"]
         
         self.movie_length = 0
         self.user_length = 0
@@ -39,23 +38,20 @@ class DataLoader():
         
         train_set = self.collect_movie_list(train_user)
         valid_set = self.collect_movie_list(valid_user)   
-
-        # self.labelled_train_set = self.make_labels(train_set)
-        # self.labelled_valid_set = self.make_labels(valid_set)
         
-        self.train_x, self.train_y = self.session_parallel(train_set) 
+        self.train_x, self.train_y = self.session_parallel(train_set)   ## make session parallel minibatch
         
 
     def split_user(self):
         user = np.array(self.users_data[0].unique())
         
-        np.random.seed(NUMPY_SEED)
+        np.random.seed(self.config["numpy_seed"])
         np.random.shuffle(user)
         
         total_len = len(user)
         
-        train_user = user[:int(total_len * split_ratio)]
-        valid_user = user[int(total_len * split_ratio):]
+        train_user = user[:int(total_len * self.split_ratio)]
+        valid_user = user[int(total_len * self.split_ratio):]
         
         return train_user, valid_user
         
@@ -80,6 +76,7 @@ class DataLoader():
         return data_set
 
     def make_labels(self, data_set):
+        session_length = self.config["session_length"]
         labelled_dataset = {}
         
         keys = data_set.keys()
@@ -87,19 +84,19 @@ class DataLoader():
         for key in keys:
             movie_list = data_set[key]
             movie_length = len(movie_list)
-            session_count = (movie_length - 1) // SESSION_LENGTH
+            session_count = (movie_length - 1) // session_length
         
             labelled_dataset[key] = {}
             
-            x_array = np.empty((0, SESSION_LENGTH), dtype=int)
-            y_array  = np.empty((0, SESSION_LENGTH), dtype=int)
+            x_array = np.empty((0, session_length), dtype=int)
+            y_array  = np.empty((0, session_length), dtype=int)
             
             for i in range(0, session_count):
-                x = np.array(movie_list[i*SESSION_LENGTH : (i+1)*SESSION_LENGTH])
-                y = np.array(movie_list[i*SESSION_LENGTH+1 : (i+1)*SESSION_LENGTH+1])
+                x = np.array(movie_list[i*session_length : (i+1)*session_length])
+                y = np.array(movie_list[i*session_length+1 : (i+1)*session_length+1])
                 
-                x = np.reshape(x, (1, SESSION_LENGTH))
-                y = np.reshape(y, (1, SESSION_LENGTH))                
+                x = np.reshape(x, (1, session_length))
+                y = np.reshape(y, (1, session_length))                
                 
                 x_array = np.append(x_array, x, axis = 0)
                 y_array = np.append(y_array, y, axis = 0)
@@ -114,17 +111,17 @@ class DataLoader():
         batch_y = []
         
         current_user = []
-        current_idx = [0] * BATCH_SIZE
+        current_idx = [0] * self.batch_size
                 
         keys = list(data_set.keys())
         no_key = False
         
-        for i in range(0, BATCH_SIZE):
+        for i in range(0, self.batch_size):
             current_user.append(keys[i])
-        next_idx = BATCH_SIZE
+        next_idx = self.batch_size
         
         while not no_key:
-            for i in range(0, BATCH_SIZE):
+            for i in range(0, self.batch_size):
                 target_user = current_user[i]
                 
                 x = data_set[target_user][current_idx[i]]    
@@ -135,8 +132,6 @@ class DataLoader():
                 
                 current_idx[i] = current_idx[i] + 1
                 if (len(data_set[target_user]) - 1) <= current_idx[i]:
-                    # print("next!")
-                    # print(next_idx)
                     current_user[i] = keys[next_idx]
                     current_idx[i] = 0
                     
@@ -149,7 +144,7 @@ class DataLoader():
             enable = True
             mini_batch_x = []
             mini_batch_y = []
-            for i in range(0, BATCH_SIZE):
+            for i in range(0, self.batch_size):
                 target_user = current_user[i]
                 
                 x = data_set[target_user][current_idx[i]]
@@ -190,7 +185,7 @@ class DataLoader():
         # one_hot_train_x = self.one_hot_encoding(self.train_x)
         # one_hot_train_y = self.one_hot_encoding(self.train_y)
         
-        batch_size = BATCH_SIZE
+        batch_size = self.batch_size
         
         dataset = tf.data.Dataset.from_tensor_slices((self.train_x, self.train_y))
         dataset = dataset.batch(batch_size)
@@ -199,9 +194,19 @@ class DataLoader():
         return dataset
 
 
+
+    '''
+    APIs
+    '''
     def get_movie(self, id):
         idx = self.movies_data.index[self.movies_data[0] == id]
         idx = idx.tolist()[0]
         movie = self.movies_data.iat[idx, 1]
 
         return movie
+
+    def get_movie_length(self):
+        return self.movie_length
+    
+    def get_user_length(self):
+        return self.user_length
