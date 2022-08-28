@@ -139,6 +139,7 @@ class DataLoader():
                         next_idx += 1
                     if next_idx == (len(keys)):
                         no_key = True
+                        break
         
         while True:
             enable = True

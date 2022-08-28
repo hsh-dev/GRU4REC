@@ -15,20 +15,20 @@ class RNN(Model):
         self.seq_dim = m_seq
         self.out_dim = out_dim
         
-        self.embedding_layer = Embedding(1, n_dim)
+        self.embedding_layer = Embedding(out_dim, n_dim)
         
         self.gru_layer_1 = GRU_Layer(n_dim, m_seq)
         self.gru_layer_2 = GRU_Layer(n_dim, m_seq)
         self.gru_layer_3 = GRU_Layer(n_dim, m_seq)
         self.gru_layer_4 = GRU_Layer(n_dim, m_seq)
         
+        self.dropout = Dropout(0.5)
         self.fc_layer = Dense(self.out_dim)
         
         self.softmax = Softmax()
         
     def call(self, x):
         x = self.embedding_layer(x)
-        
         shortcut = x
         
         x = self.gru_layer_1(x)
@@ -36,6 +36,7 @@ class RNN(Model):
         x = self.gru_layer_3(x)
         x = self.gru_layer_4(x + shortcut)
         
+        x = self.dropout(x)
         x = self.fc_layer(x)
                 
         x = self.softmax(x)

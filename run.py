@@ -9,7 +9,7 @@ HIDDEN_DIM = 1000     ## hidden layer dimension of embedding layer
 SEQ_COUNT = 5       ## sequence block count in gru layer
 
 config = {
-    "batch_size" : 16,
+    "batch_size" : 128,
     "learning_rate" : 1e-4,
     "optimizer" : "ADAM",
     

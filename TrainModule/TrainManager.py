@@ -2,7 +2,6 @@ import tensorflow as tf
 import numpy as np
 import time
 import tensorflow.keras.backend as K
-from tensorflow.keras.activations import sigmoid
 
 
 class TrainManager():
@@ -28,7 +27,7 @@ class TrainManager():
                 
     def train_loop(self):
         dataset = self.dataloader.get_train_set()
-        movie_dim = self.dataloader.get_movie_length()  
+        self.movie_dim = self.dataloader.get_movie_length()  
         
         total_step = len(dataset)
         
@@ -52,7 +51,7 @@ class TrainManager():
             all_hr_list.append(hr)
             hr_list.append(hr)
             
-            if (idx+1) % 1000 == 0:
+            if (idx+1) % 500 == 0:
                 end_time = time.time()
                 
                 losses = np.average(np.array(loss_list))
@@ -60,7 +59,7 @@ class TrainManager():
                 print("STEP: {}/{} | Loss: {} | Time: {}s".format(
                                                                 idx+1, 
                                                                 total_step, 
-                                                                round(losses, 5), 
+                                                                losses, 
                                                                 round(end_time - start_time, 5)
                                                             ))
                 print("HR: {} ".format(hr_avg))
@@ -82,11 +81,13 @@ class TrainManager():
         return y_true
 
     def propagation(self, x, y):
+        y_true = self.make_one_hot_vector(y, self.movie_dim)
+
         with tf.GradientTape() as tape:
             output = self.model(x)
             
-            loss = self.top_1_ranking_loss(y, output)
-            # loss = self.cross_entropy(y, output)
+            # loss = self.top_1_ranking_loss(y, output)
+            loss = self.cross_entropy(y_true, output)
 
         gradients = tape.gradient(loss, self.model.trainable_variables)
             
@@ -113,9 +114,9 @@ class TrainManager():
         y_true_idx = tf.expand_dims(y_true_idx, axis = 1)
         positive_list = tf.gather(y_pred, indices = y_true_idx, axis = 1, batch_dims=1)
         
-        cal = sigmoid(negative_list - positive_list)
-        reg = K.square(negative_list)
-        loss = K.mean(cal+reg)
+        cal = K.sigmoid(negative_list - positive_list)
+        # reg = K.square(negative_list)
+        loss = K.mean(cal)
         
         return loss
     
