@@ -42,9 +42,7 @@ class TrainManager():
         
         for idx, sample in enumerate(dataset):
             x, y = sample
-            
-            # y_true = self.make_one_hot_vector(y, movie_dim)
-            
+                
             loss, y_pred = self.propagation(x, y)
             hr = self.hit_rate(y, y_pred)
             
@@ -82,14 +80,16 @@ class TrainManager():
             y_true[i][movie_id-1] = 1
         return y_true
 
+
+    @tf.function
     def propagation(self, x, y):
-        y_true = self.make_one_hot_vector(y, self.movie_dim)
+        # y_true = self.make_one_hot_vector(y, self.movie_dim)
 
         with tf.GradientTape() as tape:
             output = self.model(x)
             
-            # loss = self.top_1_ranking_loss(y, output)
-            loss = self.cross_entropy(y_true, output)
+            loss = self.top_1_ranking_loss(y, output)
+            # loss = self.cross_entropy(y_true, output)
 
         gradients = tape.gradient(loss, self.model.trainable_variables)
             
@@ -102,12 +102,14 @@ class TrainManager():
     '''
     Loss Functions
     '''
+    @tf.function
     def cross_entropy(self, y_true, y_pred):
         cce = tf.keras.losses.CategoricalCrossentropy()
         err = cce(y_true, y_pred)
         
         return err        
     
+    @tf.function
     def top_1_ranking_loss(self, y_true_idx, y_pred):
         y_true_idx = y_true_idx - 1
         
@@ -125,15 +127,16 @@ class TrainManager():
     
     def hit_rate(self, y_true_idx, y_pred):
         y_pred = y_pred.numpy()
+        length = len(y_pred)
         k = 5
         
         hit = 0
-        for i in range(self.batch_size):
+        for i in range(length):
             indices = (-y_pred[i]).argsort()[:k]
             if y_true_idx[i] in indices:
                 hit += 1
                 
-        hit_rate = hit / self.batch_size
+        hit_rate = hit / length
         
         return hit_rate
     
