@@ -74,22 +74,24 @@ class TrainManager():
     
     
     def make_one_hot_vector(self, y, dim):
-        y_true = np.zeros((self.batch_size, dim), np.float32)
-        for i in range(self.batch_size):
+        length = len(y)
+        y_true = np.zeros((length, dim), np.float32)
+
+        for i in range(length):
             movie_id = y[i]
             y_true[i][movie_id-1] = 1
         return y_true
 
 
-    @tf.function
+    # @tf.function
     def propagation(self, x, y):
-        # y_true = self.make_one_hot_vector(y, self.movie_dim)
+        y_true = self.make_one_hot_vector(y, self.movie_dim)
 
         with tf.GradientTape() as tape:
             output = self.model(x)
             
-            loss = self.top_1_ranking_loss(y, output)
-            # loss = self.cross_entropy(y_true, output)
+            # loss = self.top_1_ranking_loss(y, output)
+            loss = self.cross_entropy(y_true, output)
 
         gradients = tape.gradient(loss, self.model.trainable_variables)
             

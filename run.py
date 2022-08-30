@@ -5,7 +5,7 @@ from Models.RNN import RNN
 
 from DataModule.DataLoader import DataLoader
 
-HIDDEN_DIM = 1000     ## hidden layer dimension of embedding layer
+HIDDEN_DIM = 100     ## hidden layer dimension of embedding layer
 SEQ_COUNT = 5       ## sequence block count in gru layer
 
 config = {
