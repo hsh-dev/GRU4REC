@@ -1,3 +1,4 @@
+from re import S
 import tensorflow as tf
 import numpy as np
 import time
@@ -11,7 +12,9 @@ class TrainManager():
         self.dataloader = dataloader
 
         self.batch_size = config["batch_size"]
-    
+        self.loss = config["loss"]
+        self.embedding = config["embedding"]
+        
         self.optimizer = tf.keras.optimizers.Adam(
             learning_rate = self.config["learning_rate"]
         )
@@ -43,7 +46,7 @@ class TrainManager():
         for idx, sample in enumerate(dataset):
             x, y = sample
                 
-            loss, y_pred = self.propagation(x, y)
+            loss, y_pred = self.propagation(x, y, self.loss, self.embedding)
             hr = self.hit_rate(y, y_pred)
             
             all_loss_list.append(loss)
@@ -73,33 +76,36 @@ class TrainManager():
         print("Total Loss : {} | HR : {}".format(total_loss, total_hr))
     
     
+    @tf.function
     def make_one_hot_vector(self, y, dim):
-        length = len(y)
-        y_true = np.zeros((length, dim), np.float32)
+        dim = tf.cast(dim, dtype = tf.int32)
+        movie_id = y - 1
+        
+        one_hot = tf.one_hot(movie_id, dim)
 
-        for i in range(length):
-            movie_id = y[i]
-            y_true[i][movie_id-1] = 1
-        return y_true
+        return one_hot
 
 
     # @tf.function
-    def propagation(self, x, y):
-        y_true = self.make_one_hot_vector(y, self.movie_dim)
-
+    def propagation(self, x, y, loss = "top_1", embedding = True):
+        if not embedding:
+            x = self.make_one_hot_vector(x, self.movie_dim)
+            
         with tf.GradientTape() as tape:
             output = self.model(x)
             
-            # loss = self.top_1_ranking_loss(y, output)
-            loss = self.cross_entropy(y_true, output)
-
+            if loss == "top_1":
+                loss = self.top_1_ranking_loss(y, output)
+            else:
+                y_one_hot = self.make_one_hot_vector(y, self.movie_dim)
+                loss = self.cross_entropy(y_one_hot, output)
+                
         gradients = tape.gradient(loss, self.model.trainable_variables)
             
         self.optimizer.apply_gradients(
             zip(gradients, self.model.trainable_variables))
         
         return loss, output
-    
     
     '''
     Loss Functions

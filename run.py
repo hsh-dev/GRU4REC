@@ -9,7 +9,7 @@ HIDDEN_DIM = 100     ## hidden layer dimension of embedding layer
 SEQ_COUNT = 5       ## sequence block count in gru layer
 
 config = {
-    "batch_size" : 128,
+    "batch_size" : 16,
     "learning_rate" : 1e-4,
     "optimizer" : "ADAM",
     
@@ -17,6 +17,8 @@ config = {
     "ratings_path" : "ml-1m/ratings.dat",
     "users_path": "ml-1m/users.dat",
     
+    "loss" : "top_1",           ## top_1, cross_entropy
+    "embedding" : False,        ## True when using embedding layer
     
     "numpy_seed" : 10,
     "split_ratio" : 0.8,
@@ -35,7 +37,7 @@ if __name__ == "__main__":
     dataloader = DataLoader(config)
 
     out_dim = dataloader.get_movie_length()    
-    model = RNN(n_dim = HIDDEN_DIM, m_seq = SEQ_COUNT, out_dim = out_dim)
+    model = RNN(n_dim = HIDDEN_DIM, m_seq = SEQ_COUNT, out_dim = out_dim, embedding=False)
     
     trainmanger = TrainManager(model, dataloader, config)
 
