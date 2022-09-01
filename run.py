@@ -13,6 +13,7 @@ config = {
     "batch_size" : 32,
     "learning_rate" : 1e-3,
     "optimizer" : "ADAM",
+    "max_epoch" : 200,
     
     "movies_path" : "ml-1m/movies.dat",
     "ratings_path" : "ml-1m/ratings.dat",
@@ -29,14 +30,9 @@ config = {
 
 if __name__ == "__main__":
     
-    # gru = GRU_Layer(8, 3)
-    # input = tf.random.normal([10, 8], 0, 10, tf.int32)
-    # print("model test")
-    # output = rnn(input)
-    
     dataloader = DataLoader(config)
-
     item_count = dataloader.get_movie_length()    
+    
     # model = RNN(n_dim = HIDDEN_DIM, m_seq = SEQ_COUNT, out_dim = out_dim, embedding=False)
     model = RNN(h_dim = config["hidden_dim"], 
                 seq_dim = config["sequence_length"], 

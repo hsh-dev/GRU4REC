@@ -40,8 +40,10 @@ class DataLoader():
         train_set = self.collect_movie_list(train_user)
         valid_set = self.collect_movie_list(valid_user)   
         
-        # self.train_x, self.train_y = self.session_parallel(train_set)   ## make session parallel minibatch
-        self.train_x, self.train_y = self.make_seq_to_one(train_set)       ## make sequence to one input
+        # self.train_x, self.train_y = self.session_parallel(train_set)                     ## make session parallel minibatch
+        self.train_x, self.train_y = self.make_seq_to_one(train_set, sampling=True, ratio=4)         ## make sequence to one input
+        
+        self.valid_x, self.valid_y = self.make_seq_to_one(valid_set, sampling=True, ratio=10)        ## make sequence of output
 
     def split_user(self):
         user = np.array(self.users_data[0].unique())
@@ -111,7 +113,7 @@ class DataLoader():
         return labelled_dataset
     
     
-    def make_seq_to_one(self, data_set):
+    def make_seq_to_one(self, data_set, sampling, ratio = 2):
         '''
         Make sequence to one label dataset
         
@@ -133,10 +135,18 @@ class DataLoader():
             movie_length = len(movie_list)
             
             if movie_length >= sequence_length + 1:
-                sample_count = movie_length // (sequence_length+1)
-                output_idx_list = random.sample(
-                    range(sequence_length, movie_length), sample_count)
-
+                sampling_ratio = ratio
+                sample_count = (movie_length - sequence_length) // sampling_ratio
+                if sample_count == 0:
+                    sample_count = 1
+                
+                output_idx_list = []
+                if sampling:
+                    output_idx_list = random.sample(
+                        range(sequence_length, movie_length), sample_count)
+                else:
+                    output_idx_list = range(sequence_length, movie_length)
+                    
                 for output_idx in output_idx_list:
                     input_idx = output_idx - sequence_length 
                     
@@ -234,18 +244,28 @@ class DataLoader():
         return one_hot_matrix
 
     
-    def get_train_set(self):
+    def get_dataset(self, phase):
         ## Too much memory
         # one_hot_train_x = self.one_hot_encoding(self.train_x)
         # one_hot_train_y = self.one_hot_encoding(self.train_y)
         
         batch_size = self.batch_size
         
-        dataset = tf.data.Dataset.from_tensor_slices((self.train_x, self.train_y))
-        dataset = dataset.batch(batch_size, drop_remainder=True)
-        dataset = dataset.prefetch(1)
+        if phase == "train":
+            dataset = tf.data.Dataset.from_tensor_slices((
+                            self.train_x, self.train_y))
+            dataset = dataset.batch(batch_size, drop_remainder=True)
+            dataset = dataset.prefetch(1)
+            
+            return dataset
         
-        return dataset
+        elif phase == "valid":
+            dataset = tf.data.Dataset.from_tensor_slices((
+                            self.valid_x, self.valid_y))
+            dataset = dataset.batch(batch_size, drop_remainder=True)
+            dataset = dataset.prefetch(1)
+            
+            return dataset
 
 
 
@@ -258,6 +278,17 @@ class DataLoader():
         movie = self.movies_data.iat[idx, 1]
 
         return movie
+
+    def get_user_movie(self, user_id):
+        ratings = self.ratings_data.iloc[:, 0:3]
+                
+        user_ratings = ratings[ratings[0] == user_id]   ## collect movie list and ratings for the user id
+        
+        user_positive_movies = np.array(user_ratings[1])
+        user_ratings = np.array(user_ratings[2])
+        
+        return user_positive_movies, user_ratings
+
 
     def get_movie_length(self):
         return self.movie_length
