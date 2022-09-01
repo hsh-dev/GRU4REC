@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 import tensorflow as tf
+import random
 
 class DataLoader():
     def __init__(self, config) -> None:
@@ -39,8 +40,8 @@ class DataLoader():
         train_set = self.collect_movie_list(train_user)
         valid_set = self.collect_movie_list(valid_user)   
         
-        self.train_x, self.train_y = self.session_parallel(train_set)   ## make session parallel minibatch
-        
+        # self.train_x, self.train_y = self.session_parallel(train_set)   ## make session parallel minibatch
+        self.train_x, self.train_y = self.make_seq_to_one(train_set)       ## make sequence to one input
 
     def split_user(self):
         user = np.array(self.users_data[0].unique())
@@ -75,8 +76,11 @@ class DataLoader():
         
         return data_set
 
-    def make_labels(self, data_set):
-        session_length = self.config["session_length"]
+    def make_seq_to_seq(self, data_set):
+        '''
+        Make sequence to sequence inputs
+        '''
+        sequence_length = self.config["sequence_length"]
         labelled_dataset = {}
         
         keys = data_set.keys()
@@ -84,19 +88,19 @@ class DataLoader():
         for key in keys:
             movie_list = data_set[key]
             movie_length = len(movie_list)
-            session_count = (movie_length - 1) // session_length
+            session_count = (movie_length - 1) // sequence_length
         
             labelled_dataset[key] = {}
             
-            x_array = np.empty((0, session_length), dtype=int)
-            y_array  = np.empty((0, session_length), dtype=int)
+            x_array = np.empty((0, sequence_length), dtype=int)
+            y_array  = np.empty((0, sequence_length), dtype=int)
             
             for i in range(0, session_count):
-                x = np.array(movie_list[i*session_length : (i+1)*session_length])
-                y = np.array(movie_list[i*session_length+1 : (i+1)*session_length+1])
+                x = np.array(movie_list[i*sequence_length : (i+1)*sequence_length])
+                y = np.array(movie_list[i*sequence_length+1 : (i+1)*sequence_length+1])
                 
-                x = np.reshape(x, (1, session_length))
-                y = np.reshape(y, (1, session_length))                
+                x = np.reshape(x, (1, sequence_length))
+                y = np.reshape(y, (1, sequence_length))                
                 
                 x_array = np.append(x_array, x, axis = 0)
                 y_array = np.append(y_array, y, axis = 0)
@@ -106,7 +110,56 @@ class DataLoader():
     
         return labelled_dataset
     
+    
+    def make_seq_to_one(self, data_set):
+        '''
+        Make sequence to one label dataset
+        
+        EX) Input Sequence = 4
+        
+        I1, I2, I3, I4 -> I5
+        
+        Repeat input sampling in ratio of session length
+        '''
+        sequence_length = self.config["sequence_length"]
+
+        keys = data_set.keys()
+
+        x_array = np.empty((0, sequence_length), dtype=int)
+        y_array = np.empty((0, 1), dtype=int)
+        
+        for key in keys:
+            movie_list = data_set[key]
+            movie_length = len(movie_list)
+            
+            if movie_length >= sequence_length + 1:
+                sample_count = movie_length // (sequence_length+1)
+                output_idx_list = random.sample(
+                    range(sequence_length, movie_length), sample_count)
+
+                for output_idx in output_idx_list:
+                    input_idx = output_idx - sequence_length 
+                    
+                    x = np.array(movie_list[input_idx : output_idx])
+                    y = np.array(movie_list[output_idx])
+                    x = np.reshape(x, (1, -1))
+                    y = np.reshape(y, (1, -1))
+                    
+                    x_array = np.append(x_array, x, axis = 0)
+                    y_array = np.append(y_array, y, axis = 0)
+                    
+        '''
+        Output Shape : 
+            x : (Total, SEQ) // y : (Total, 1)
+        '''
+        return x_array, y_array
+        
+        
     def session_parallel(self, data_set):
+        '''
+        Make session parallel mini-batch
+        '''
+        
         batch_x = []
         batch_y = []
         
@@ -189,7 +242,7 @@ class DataLoader():
         batch_size = self.batch_size
         
         dataset = tf.data.Dataset.from_tensor_slices((self.train_x, self.train_y))
-        dataset = dataset.batch(batch_size)
+        dataset = dataset.batch(batch_size, drop_remainder=True)
         dataset = dataset.prefetch(1)
         
         return dataset

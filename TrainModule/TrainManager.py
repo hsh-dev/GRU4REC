@@ -3,7 +3,7 @@ import tensorflow as tf
 import numpy as np
 import time
 import tensorflow.keras.backend as K
-
+from TrainModule.Scheduler import CosineDecayWrapper
 
 class TrainManager():
     def __init__(self, model, dataloader, config) -> None:
@@ -15,9 +15,16 @@ class TrainManager():
         self.loss = config["loss"]
         self.embedding = config["embedding"]
         
-        self.optimizer = tf.keras.optimizers.Adam(
-            learning_rate = self.config["learning_rate"]
-        )
+        
+        self.optimizer_wrap = CosineDecayWrapper(
+                optimizer = tf.keras.optimizers.Adam(
+                    learning_rate=self.config["learning_rate"], beta_1=0.9, beta_2=0.999),
+                max_lr = self.config["learning_rate"],
+                min_lr=self.config["learning_rate"] * 0.01,
+                max_epochs = 200,
+                decay_cycles = 4,
+                decay_epochs = 100
+            )
     
     
     def start(self):
@@ -26,6 +33,8 @@ class TrainManager():
         for epoch in range(total_epoch):
             print("# Epoch {} #".format(epoch+1))
             self.train_loop()
+            
+            self.optimizer_wrap.update_lr(epoch)
                 
                 
     def train_loop(self):
@@ -45,7 +54,9 @@ class TrainManager():
         
         for idx, sample in enumerate(dataset):
             x, y = sample
-                
+            x = x - 1   ## make IDs start from 0
+            y = y - 1   ## make IDs start from 0
+            
             loss, y_pred = self.propagation(x, y, self.loss, self.embedding)
             hr = self.hit_rate(y, y_pred)
             
@@ -54,7 +65,7 @@ class TrainManager():
             all_hr_list.append(hr)
             hr_list.append(hr)
             
-            if (idx+1) % 500 == 0:
+            if (idx+1) % 1000 == 0:
                 end_time = time.time()
                 
                 losses = np.average(np.array(loss_list))
@@ -78,18 +89,16 @@ class TrainManager():
     
     @tf.function
     def make_one_hot_vector(self, y, dim):
-        dim = tf.cast(dim, dtype = tf.int32)
-        movie_id = y - 1
-        
-        one_hot = tf.one_hot(movie_id, dim)
+        dim = tf.cast(dim, dtype = tf.int32)        
+        one_hot = tf.one_hot(y, dim)
 
         return one_hot
 
 
-    # @tf.function
+    @tf.function
     def propagation(self, x, y, loss = "top_1", embedding = True):
-        if not embedding:
-            x = self.make_one_hot_vector(x, self.movie_dim)
+        # if not embedding:
+        #     x = self.make_one_hot_vector(x, self.movie_dim)
             
         with tf.GradientTape() as tape:
             output = self.model(x)
@@ -101,8 +110,8 @@ class TrainManager():
                 loss = self.cross_entropy(y_one_hot, output)
                 
         gradients = tape.gradient(loss, self.model.trainable_variables)
-            
-        self.optimizer.apply_gradients(
+        
+        self.optimizer_wrap.optimizer.apply_gradients(
             zip(gradients, self.model.trainable_variables))
         
         return loss, output
@@ -118,9 +127,7 @@ class TrainManager():
         return err        
     
     @tf.function
-    def top_1_ranking_loss(self, y_true_idx, y_pred):
-        y_true_idx = y_true_idx - 1
-        
+    def top_1_ranking_loss(self, y_true_idx, y_pred):        
         negative_list = tf.gather(y_pred, indices = y_true_idx, axis = 1)
 
         y_true_idx = tf.expand_dims(y_true_idx, axis = 1)
@@ -128,6 +135,8 @@ class TrainManager():
         
         cal = K.sigmoid(negative_list - positive_list)
         # reg = K.square(negative_list)
+        # reg_pos = K.square(positive_list)    
+    
         loss = K.mean(cal)
         
         return loss
