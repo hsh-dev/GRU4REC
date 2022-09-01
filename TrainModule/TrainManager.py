@@ -65,7 +65,7 @@ class TrainManager():
             all_hr_list.append(hr)
             hr_list.append(hr)
             
-            if (idx+1) % 1000 == 0:
+            if (idx+1) % 200 == 0:
                 end_time = time.time()
                 
                 losses = np.average(np.array(loss_list))

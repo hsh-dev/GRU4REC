@@ -133,7 +133,7 @@ class DataLoader():
             movie_length = len(movie_list)
             
             if movie_length >= sequence_length + 1:
-                sample_count = movie_length // (sequence_length+1)
+                sample_count = movie_length // (sequence_length+1) * 2
                 output_idx_list = random.sample(
                     range(sequence_length, movie_length), sample_count)
 
