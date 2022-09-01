@@ -123,7 +123,6 @@ class TrainManager():
     def make_one_hot_vector(self, y, dim):
         dim = tf.cast(dim, dtype = tf.int32)        
         one_hot = tf.one_hot(y, dim)
-
         return one_hot
 
 
@@ -138,6 +137,7 @@ class TrainManager():
             if loss == "top_1":
                 loss = self.loss_manager.top_1_ranking_loss(y, output)
             else:
+                y = tf.reshape(y, [-1])
                 y_one_hot = self.make_one_hot_vector(y, self.movie_dim)
                 loss = self.loss_manager.cross_entropy_loss(y_one_hot, output)
                 
