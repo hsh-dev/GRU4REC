@@ -4,6 +4,7 @@ import time
 
 from TrainModule.Scheduler import CosineDecayWrapper
 from TrainModule.LossManager import LossManager
+from TrainModule.ScoreManager import ScoreManager
 
 class TrainManager():
     def __init__(self, model, dataloader, config) -> None:
@@ -16,6 +17,7 @@ class TrainManager():
         self.embedding = config["embedding"]
         
         self.loss_manager = LossManager()
+        self.score_manager = ScoreManager()
         
         self.optimizer_wrap = CosineDecayWrapper(
                 optimizer = tf.keras.optimizers.Adam(
@@ -85,11 +87,11 @@ class TrainManager():
         
         for idx, sample in enumerate(dataset):
             x, y = sample
-            x = x - 1   ## make IDs start from 0
-            y = y - 1   ## make IDs start from 0
+            x = x - 1   ## make IDs start from 0    # Batch_size x Sequence
+            y = y - 1   ## make IDs start from 0    # Batch_size x 1
             
             loss, y_pred = self.propagation(x, y, self.loss, self.embedding, phase)
-            hr = self.hit_rate(y, y_pred, 5)
+            hr = self.score_manager.hit_rate(y, y_pred, 5)
             
             all_loss_list.append(loss)
             loss_list.append(loss)
@@ -119,7 +121,7 @@ class TrainManager():
         self.save_logs(total_loss, total_hr, phase)
         
     
-    @tf.function
+
     def make_one_hot_vector(self, y, dim):
         dim = tf.cast(dim, dtype = tf.int32)        
         one_hot = tf.one_hot(y, dim)
@@ -148,27 +150,6 @@ class TrainManager():
                 zip(gradients, self.model.trainable_variables))
         
         return loss, output
-
-    
-    '''
-    Caculating Accuracy
-    '''
-    def hit_rate(self, y_true_idx, y_pred, k):
-        '''
-        Recording hit if target is in top-k items
-        '''
-        y_pred = y_pred.numpy()
-        length = len(y_pred)
-        
-        hit = 0
-        for i in range(length):
-            indices = (-y_pred[i]).argsort()[:k]
-            if y_true_idx[i] in indices:
-                hit += 1
-                
-        hit_rate = hit / length
-        
-        return hit_rate
     
     '''
     Save Functions

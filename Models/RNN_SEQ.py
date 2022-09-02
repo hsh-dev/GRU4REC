@@ -1,4 +1,3 @@
-from re import S
 from tensorflow.keras import Model
 from tensorflow.keras.layers import Dense, Embedding, Softmax, Dropout, GRU
 from Models.GRU_Layer import GRU_Layer

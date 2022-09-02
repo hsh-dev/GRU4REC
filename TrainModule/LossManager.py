@@ -9,14 +9,14 @@ class LossManager():
     def __init__(self) -> None:
         pass
     
-    @tf.function
+
     def cross_entropy_loss(self, y_true, y_pred):
         cce = tf.keras.losses.CategoricalCrossentropy()
         err = cce(y_true, y_pred)
         
         return err        
     
-    @tf.function
+
     def top_1_ranking_loss(self, y_true_idx, y_pred): 
         negative_list = tf.gather(y_pred, indices = y_true_idx, axis = 1)
 
