@@ -24,6 +24,7 @@ Therfore I use all rating data in MovieLens. <br/>
 The performance of the model is measured through hit rate of top 5 items. <br/>
 As I make validation set, it records 0.33 hit rate score. <br/>
 
+![Image](./GRU4REC_valid_result.png)
 
 
 
